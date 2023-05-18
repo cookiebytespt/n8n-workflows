@@ -1,0 +1,292 @@
+{
+  "name": "Send SAFT-T",
+  "nodes": [
+    {
+      "parameters": {
+        "value1": "={{$json[\"statusCode\"]}}",
+        "rules": {
+          "rules": [
+            {
+              "operation": "equal",
+              "value2": 200
+            },
+            {
+              "operation": "equal",
+              "value2": 202,
+              "output": 3
+            },
+            {
+              "operation": "largerEqual",
+              "value2": "500",
+              "output": 2
+            }
+          ]
+        }
+      },
+      "id": "a90c29e3-d8ba-4c5b-90f7-06e94ecb0b2a",
+      "name": "Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        340
+      ],
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "amount": 10,
+        "unit": "seconds"
+      },
+      "id": "537aadc1-288b-4a3e-8132-6c4b7a877c09",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        1140,
+        560
+      ],
+      "webhookId": "a91de6c6-37d8-48cb-9b93-bd7ebbac42ea",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "url": "={{$json[\"body\"][\"url\"]}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "saft"
+            }
+          }
+        }
+      },
+      "id": "b63d89b0-e3fc-4238-8b56-8aaadb2ca80b",
+      "name": "Download SAFT file",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1420,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://<account_name>.app.invoicexpress.com/api/export_saft.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "month",
+              "value": "={{ $json[\"month\"] }}"
+            },
+            {
+              "name": "years",
+              "value": "={{ $json[\"year\"] }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "90bf6b41-d20a-416e-bac5-1f407445bc69",
+      "name": "Request SAFT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1060,
+        160
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 5,
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "1",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "<required>",
+        "toEmail": "<required>",
+        "ccEmail": "<optional>",
+        "bccEmail": "<optional>",
+        "subject": "=[<Company Name>] Envio SAFT período {{$node[\"Month and Year\"].json[\"month\"]}}/{{$node[\"Month and Year\"].json[\"year\"]}}",
+        "text": "=Envio automático do SAFT referente ao período {{$node[\"Month and Year\"].json[\"month\"]}}/{{$node[\"Month and Year\"].json[\"year\"]}}.\n\nSe houver algo de errado, por favor entre em contacto para o <contact email>.\n\nObrigado\nFicheiro SAFT em anexo",
+        "attachments": "saft",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "037bf459-31fd-4e09-b3bd-b802bf957f4e",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [
+        1640,
+        340
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "2",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "month",
+              "value": "={{$today.minus({months: 1}).month}}"
+            },
+            {
+              "name": "year",
+              "value": "={{$today.minus({months: 1}).year}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ac4cf352-0348-4093-a78a-71af3e265c86",
+      "name": "Month and Year",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        840,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "monthsInterval": "0",
+              "triggerAtDayOfMonth": 12
+            }
+          ]
+        }
+      },
+      "id": "af73c1df-3ff3-4ae1-8b92-5745838f0e5b",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        540,
+        160
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Download SAFT file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [],
+        [],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Month and Year",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request SAFT": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download SAFT file": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Month and Year": {
+      "main": [
+        [
+          {
+            "node": "Request SAFT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Month and Year",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "timezone": "Europe/Lisbon",
+    "saveExecutionProgress": "DEFAULT",
+    "saveManualExecutions": false,
+    "callerPolicy": "any"
+  },
+  "versionId": "f88f3220-b1b1-4611-a445-f452a280f6e9",
+  "id": "1",
+  "meta": {
+    "instanceId": "edcdc83b43a908a0222e1925576819d7333c123e546f3931ac6cff0d5235714c"
+  },
+  "tags": []
+}
