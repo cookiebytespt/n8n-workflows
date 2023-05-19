@@ -1,0 +1,273 @@
+{
+  "name": "Create new invoice on day",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://<account_name>.app.invoicexpress.com/invoices.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"invoice\":{\"date\":\"{{ $input.item.json.todayDate }}\",\"due_date\":\"{{ $input.item.json.dueDate }}\",\"client\":{\"name\":\"<client name>\",\"code\":\"<client code>\"},\"items\":[{\"name\":\"<item name>\",\"description\":\"\",\"unit_price\":\"<price>\",\"quantity\":\"1\"}]}}",
+        "options": {}
+      },
+      "id": "e177518e-28fe-4409-a299-f91ba0b196db",
+      "name": "Create invoice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1280,
+        320
+      ],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "1",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "value": "={{ $today }}",
+        "dataPropertyName": "todayDate",
+        "custom": true,
+        "toFormat": "DD/MM/YYYY",
+        "options": {}
+      },
+      "id": "0a9b3787-919c-42ce-8425-25cfeee5ec41",
+      "name": "Today",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        860,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "value": "={{ $today.plus({days: 30}) }}",
+        "dataPropertyName": "dueDate",
+        "custom": true,
+        "toFormat": "DD/MM/YYYY",
+        "options": {}
+      },
+      "id": "c8c5f484-faa1-44ce-b02d-60023ee92b98",
+      "name": "Due Date",
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 1,
+      "position": [
+        860,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "multiplex",
+        "options": {}
+      },
+      "id": "f54edf91-90ee-4418-828d-d3c410138360",
+      "name": "Merge Items",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://<account_name>.app.invoicexpress.com/invoice/{{ $input.item.json.invoice.id }}/change-state.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"invoice\":{\"state\":\"finalized\",\"message\":\"Invoice accepted.\"}}",
+        "options": {}
+      },
+      "id": "5d29e0d4-26c5-452a-9b83-b8762519fb63",
+      "name": "Finalize Invoice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1460,
+        60
+      ],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "1",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://<account_name>.app.invoicexpress.com/invoices/{{ $input.item.json.invoice.id }}/email-document.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"message\":{\"client\":{\"email\":\"<client_email>\",\"save\":\"0\"},\"subject\":\"<subject>\",\"body\":\"<body>\",\"cc\":\"<optional>\"}}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "3b5c44c0-738e-4f5e-a05d-d49c9a567e56",
+      "name": "Send email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1800,
+        320
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "1",
+          "name": "Query Auth account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "monthsInterval": 0,
+              "triggerAtDayOfMonth": 20
+            }
+          ]
+        }
+      },
+      "id": "e1dfb6b1-677a-46b4-9ae4-d3504d3e081e",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        600,
+        320
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Due Date": {
+      "main": [
+        [
+          {
+            "node": "Merge Items",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Today": {
+      "main": [
+        [
+          {
+            "node": "Merge Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Items": {
+      "main": [
+        [
+          {
+            "node": "Create invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create invoice": {
+      "main": [
+        [
+          {
+            "node": "Send email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Today",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Due Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "timezone": "Europe/Lisbon",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "ba4ab7e8-3b15-430e-a7f9-88e3e5bfb368",
+  "id": "2",
+  "meta": {
+    "instanceId": "edcdc83b43a908a0222e1925576819d7333c123e546f3931ac6cff0d5235714c"
+  },
+  "tags": []
+}
